@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".github/workflows/Test.yml" />
+    <File Path=".gitignore" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="Dirge.SourceGeneratorUtils/Dirge.SourceGeneratorUtils.csproj" Id="2c12cdcb-0267-42c9-b04d-e7de8af88068" />
+  <Project Path="Dirge.Test/Dirge.Test.csproj" Id="2ec99a86-1248-474d-8bb3-1f2f5af93257" />
+  <Project Path="Dirge.TestGenerator/Dirge.TestGenerator.csproj" Id="dac74864-8ef2-4acf-baa3-20ed8905621f" />
+  <Project Path="Dirge/Dirge.csproj" />
+</Solution>
