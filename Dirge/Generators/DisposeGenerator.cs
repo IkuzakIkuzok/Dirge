@@ -27,20 +27,28 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
         if (disposableSymbol is null) return;
 
         var targetSymbol = (INamedTypeSymbol)source.TargetSymbol;
-        if (targetSymbol.IsReadOnly) return; // TODO: report diagnostic for unsupported types
+        if (targetSymbol.IsReadOnly)
+        {
+            DiagnosticReporter.ReadonlyStructNotSupported(context, targetSymbol);
+            return;
+        }
         
         var isPartial = targetSymbol.DeclaringSyntaxReferences
             .Select(r => r.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
             .Any(s => s.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
-        if (!isPartial) return; // TODO: report diagnostic for non-partial types
+        if (!isPartial)
+        {
+            DiagnosticReporter.TypeMustBePartial(context, targetSymbol);
+            return;
+        }
 
         var attribute = targetSymbol.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == TypesGenerator.AutoDisposeAttributeName);
         if (attribute is null) return;
 
         var fields = targetSymbol.GetMembers()
             .OfType<IFieldSymbol>()
-            .SelectNotNull(f => DisposableFieldInfo.Create(f, targetSymbol, disposableSymbol, compilation))
+            .SelectNotNull(f => DisposableFieldInfo.Create(f, targetSymbol, disposableSymbol, context, compilation))
             .ToArray();
 
         if (fields.Length == 0) return;
@@ -104,7 +112,7 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
         }
         else
         {
-            var generation = DisposeGenerationInfo.Create(targetSymbol, disposableSymbol, compilation);
+            var generation = DisposeGenerationInfo.Create(targetSymbol, disposableSymbol, context, compilation);
             if (generation is null) return; // No need to report diagnostic
 
             if (generation.Strategy == DisposeGenerationStrategy.GenerateRoot)

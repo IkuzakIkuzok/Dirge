@@ -10,7 +10,7 @@ internal record DisposableFieldInfo(string Name, bool IsRefStruct, string? FlagN
     internal string GetDisposeCall()
         => this.IsRefStruct ? $"this.{this.Name}.Dispose()" : $"this.{this.Name}?.Dispose()";
 
-    internal static DisposableFieldInfo? Create(IFieldSymbol field, INamedTypeSymbol targetType, INamedTypeSymbol disposableSymbol, Compilation compilation)
+    internal static DisposableFieldInfo? Create(IFieldSymbol field, INamedTypeSymbol targetType, INamedTypeSymbol disposableSymbol, SourceProductionContext context, Compilation compilation)
     {
         if (field.IsStatic) return null;
 
@@ -25,20 +25,25 @@ internal record DisposableFieldInfo(string Name, bool IsRefStruct, string? FlagN
         if (conditionalAttribute is null)
             return new(field.Name, isRefStruct, null, false);
 
+        if (conditionalAttribute.ConstructorArguments.Length != 2) return null;
+
         var nameArg = conditionalAttribute.ConstructorArguments[0];
         if (nameArg.Value is not string name) return null;
 
         // 'name' must be a field of the parent type and must be a boolean
         var flagField = targetType.GetMembers(name).OfType<IFieldSymbol>().FirstOrDefault();
-        if (flagField is null) return null; // TODO: report diagnostic
-        if (flagField.Type.SpecialType != SpecialType.System_Boolean) return null; // TODO: report diagnostic
+        if (flagField?.Type.SpecialType != SpecialType.System_Boolean)
+        {
+            DiagnosticReporter.DoNotDisposeWhenTargetMustBeBoolField(context, conditionalAttribute);
+            return null;
+        }
         if (!flagField.IsStatic) name = $"this.{name}";
 
         var condArg = conditionalAttribute.ConstructorArguments[1];
         if (condArg.Value is not bool condition) return null;
 
         return new(field.Name, isRefStruct, name, condition);
-    } // internal static DisposableFieldInfo? Create (IFieldSymbol, INamedTypeSymbol, INamedTypeSymbol, Compilation)
+    } // internal static DisposableFieldInfo? Create (IFieldSymbol, INamedTypeSymbol, INamedTypeSymbol, SourceProductionContext, Compilation)
 
     private static bool IsDisposable(IFieldSymbol field, INamedTypeSymbol targetType, INamedTypeSymbol disposableSymbol, Compilation compilation)
     {
