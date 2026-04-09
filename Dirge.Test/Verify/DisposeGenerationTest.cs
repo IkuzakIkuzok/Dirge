@@ -167,6 +167,23 @@ public sealed partial class DisposeGenerationTest
 
     // lang=C#
     [TestSource]
+    private static readonly string _unmanagedResourceOnly = """
+        using Dirge;
+
+        namespace Test;
+        
+        [AutoDispose(ReleaseUnmanagedResources = nameof(ReleaseUnmanagedResources))]
+        internal sealed partial class MyClass
+        {
+            internal void ReleaseUnmanagedResources()
+            {
+                // Custom logic to release unmanaged resources
+            }
+        }
+        """;
+
+    // lang=C#
+    [TestSource]
     private static readonly string _overrideDispose = """
         using Dirge;
         using System;

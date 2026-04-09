@@ -51,12 +51,13 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             .SelectNotNull(f => DisposableFieldInfo.Create(f, targetSymbol, disposableSymbol, context, compilation))
             .ToArray();
 
-        if (fields.Length == 0) return;
+        if (!attribute.TryGetNamedArgumentValue("ReleaseUnmanagedResources", out string? releaseUnmanagedResources))
+            releaseUnmanagedResources = null;
+
+        if (fields.Length == 0 && string.IsNullOrEmpty(releaseUnmanagedResources)) return;
 
         var isSealed = targetSymbol.IsSealed;
         var hasDisposableBase = targetSymbol.ImplementsInterface(disposableSymbol);
-        if (!attribute.TryGetNamedArgumentValue("ReleaseUnmanagedResources", out string? releaseUnmanagedResources))
-            releaseUnmanagedResources = null;
 
         var canBeSimple =
             isSealed
