@@ -2,10 +2,14 @@
 # Dirge
 
 [![Test](https://github.com/IkuzakIkuzok/Dirge/actions/workflows/Test.yml/badge.svg)](https://github.com/IkuzakIkuzok/Dirge/actions/workflows/Test.yml)
+[![Version](https://img.shields.io/nuget/v/Dirge?styles=flat)](https://www.nuget.org/packages/Dirge/#versions-body-tab)
+[![Download](https://img.shields.io/nuget/dt/Dirge?styles=flat)](https://www.nuget.org/packages/Dirge/#versions-body-tab)
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/IkuzakIkuzok/Dirge/blob/main/LICENSE)
 
-
 Disposable Implementation Roslyn Generator Extension
+## Installation
+
+You can install the EnumSerializer from [NuGet](https://www.nuget.org/packages/Dirge/).
 
 ## Usage
 
