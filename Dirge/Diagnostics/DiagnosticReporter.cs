@@ -1,7 +1,7 @@
 ﻿
 // (c) 2026 Kazuki Kohzuki
 
-namespace Dirge.Generators;
+namespace Dirge.Diagnostics;
 
 internal static class DiagnosticReporter
 {

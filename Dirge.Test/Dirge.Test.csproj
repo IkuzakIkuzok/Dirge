@@ -30,6 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Dirge\Dirge.csproj" />
     <ProjectReference Include="..\Dirge\Dirge.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Dirge.CodeFixes\Dirge.CodeFixes.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Dirge.TestGenerator\Dirge.TestGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

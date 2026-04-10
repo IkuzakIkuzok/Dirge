@@ -1,6 +1,7 @@
 ﻿
 // (c) 2026 Kazuki Kohzuki
 
+using Dirge.Diagnostics;
 using Dirge.Utils;
 using System.Collections.Generic;
 
