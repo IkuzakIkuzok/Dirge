@@ -10,9 +10,9 @@ internal sealed class TypesGenerator : IIncrementalGenerator
     {
         context.RegisterPostInitializationOutput(context =>
         {
-            context.AddSource(DiagnosticTestAttributeName, DiagnosticTestAttributeSource);
+            context.AddSource("DiagnosticTestAttribute.g.cs", DiagnosticTestAttributeSource);
         });
-    }
+    } // public void Initialize (IncrementalGeneratorInitializationContext)
 
     internal const string Namespace = "Dirge.Test.Diagnostics";
     internal const string DiagnosticTestAttributeName = "DiagnosticTestAttribute";

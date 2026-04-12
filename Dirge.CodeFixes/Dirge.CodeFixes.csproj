@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Dirge.Test" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Microsoft.CodeAnalysis" />
     <Using Include="Microsoft.CodeAnalysis.CodeFixes" />
     <Using Include="System.Composition" />

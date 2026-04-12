@@ -46,6 +46,27 @@ public sealed partial class DiagnosticTests
 
     // lang=C#
     [TestSource]
+    private static readonly string _nonPartialAncestors = """
+        using Dirge;
+        using System.IO;
+        
+        public class {|DIRGE002:NonPartialClass|}
+        {
+            [AutoDispose]
+            public partial class PartialClass
+            {
+                private readonly Stream _stream;
+        
+                public PartialClass(Stream stream)
+                {
+                    this._stream = stream;
+                }
+            }
+        }
+        """;
+
+    // lang=C#
+    [TestSource]
     private static readonly string _disposeInNonDisposableBase = """
         using Dirge;
         using System.IO;

@@ -19,16 +19,11 @@ internal static class DiagnosticReporter
         context.ReportDiagnostic(diagnostic);
     } // internal static void ReadonlyStructNotSupported (SourceProductionContext, INamedTypeSymbol)
 
-    internal static void TypeMustBePartial(SourceProductionContext context, INamedTypeSymbol typeSymbol)
+    internal static void TypeMustBePartial(SourceProductionContext context, TypeDeclarationSyntax typeDeclaration)
     {
-        var typeDeclarationLocation = typeSymbol.DeclaringSyntaxReferences
-            .Select(reference => reference.GetSyntax())
-            .OfType<TypeDeclarationSyntax>()
-            .FirstOrDefault()
-            ?.Identifier.GetLocation();
-        var location = typeDeclarationLocation ?? typeSymbol.Locations.FirstOrDefault();
+        var location = typeDeclaration.Identifier.GetLocation();
 
-        var diagnostic = DiagnosticDescriptors.TypeMustBePartial(typeSymbol.Name, location);
+        var diagnostic = DiagnosticDescriptors.TypeMustBePartial(typeDeclaration.Identifier.Text, location);
         context.ReportDiagnostic(diagnostic);
     } // internal static void TypeMustBePartial (SourceProductionContext, INamedTypeSymbol)
 

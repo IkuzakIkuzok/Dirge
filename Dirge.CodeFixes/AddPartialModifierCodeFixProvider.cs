@@ -44,11 +44,21 @@ internal sealed class AddPartialModifierCodeFixProvider : CodeFixProvider
     {
         var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
 
-        var partialToken = SyntaxFactory.Token(SyntaxKind.PartialKeyword).WithTrailingTrivia(SyntaxFactory.ElasticSpace);
+        var typesToFix = typeDecl.AncestorsAndSelf().OfType<TypeDeclarationSyntax>();
 
-        var newModifiers = typeDecl.Modifiers.Add(partialToken);
-        var newTypeDecl = typeDecl.WithModifiers(newModifiers);
-        editor.ReplaceNode(typeDecl, newTypeDecl);
+        foreach (var typeToFix in typesToFix)
+        {
+            if (typeToFix.Modifiers.Any(SyntaxKind.PartialKeyword))
+                continue;
+
+            var partialToken = SyntaxFactory.Token(SyntaxKind.PartialKeyword).WithTrailingTrivia(SyntaxFactory.ElasticSpace);
+
+            var newModifiers = typeToFix.Modifiers.Add(partialToken);
+            var newTypeDecl = typeToFix.WithModifiers(newModifiers);
+
+            editor.ReplaceNode(typeToFix, newTypeDecl);
+        }
+
         return editor.GetChangedDocument();
     } // private static async Task<Document> AddPartialModifierAsync (Document, TypeDeclarationSyntax, CancellationToken)
 } // internal sealed class AddPartialModifierCodeFixProvider : CodeFixProvider

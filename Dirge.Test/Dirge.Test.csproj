@@ -15,9 +15,10 @@
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.3.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.3" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" Version="1.1.3" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.3.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
     <PackageReference Include="Verify.SourceGenerators" Version="2.5.0" />
     <PackageReference Include="Verify.XunitV3" Version="31.15.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
@@ -30,6 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Dirge\Dirge.csproj" />
     <ProjectReference Include="..\Dirge\Dirge.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Dirge.CodeFixes\Dirge.CodeFixes.csproj" />
     <ProjectReference Include="..\Dirge.CodeFixes\Dirge.CodeFixes.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Dirge.TestGenerator\Dirge.TestGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>

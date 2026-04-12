@@ -33,16 +33,13 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             DiagnosticReporter.ReadonlyStructNotSupported(context, targetSymbol);
             return;
         }
-        
-        var isPartial = targetSymbol.DeclaringSyntaxReferences
+
+        var decl = targetSymbol.DeclaringSyntaxReferences
             .Select(r => r.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
-            .Any(s => s.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
-        if (!isPartial)
-        {
-            DiagnosticReporter.TypeMustBePartial(context, targetSymbol);
-            return;
-        }
+            .FirstOrDefault();
+        if (decl is null) return;
+        if (!EnsureAllAncestorsArePartial(decl, context)) return;
 
         var attribute = targetSymbol.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == TypesGenerator.AutoDisposeAttributeName);
         if (attribute is null) return;
@@ -139,6 +136,26 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
 
         context.AddSource($"{targetSymbol.Name}.GeneratedDispose.g.cs", builder.ToString());
     } // private static void Execute (SourceProductionContext, GeneratorAttributeSyntaxContext)
+
+    private static bool EnsureAllAncestorsArePartial(TypeDeclarationSyntax typeDecl, SourceProductionContext context)
+    {
+        SyntaxNode? currentNode = typeDecl;
+
+        while (currentNode is TypeDeclarationSyntax parentTypeDecl)
+        {
+            var isPartial = parentTypeDecl.Modifiers.Any(SyntaxKind.PartialKeyword);
+
+            if (!isPartial)
+            {
+                DiagnosticReporter.TypeMustBePartial(context, parentTypeDecl);
+                return false;
+            }
+
+            currentNode = currentNode.Parent;
+        }
+
+        return true;
+    } // private static bool EnsureAllAncestorsArePartial (TypeDeclarationSyntax, SourceProductionContext)
 
     private static List<TypeWrapperInfo> GetDeclarationStack(INamedTypeSymbol symbol)
     {

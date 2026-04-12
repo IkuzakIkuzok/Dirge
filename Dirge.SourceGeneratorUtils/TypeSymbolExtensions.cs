@@ -62,6 +62,12 @@ internal static class TypeSymbolExtensions
 
         #endregion inheritance
 
+        internal bool IsPartial
+            => symbol.DeclaringSyntaxReferences
+                .Select(r => r.GetSyntax())
+                .OfType<global::Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax>()
+                .Any(s => s.Modifiers.Any(m => m.IsKind(global::Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword)));
+
         internal IEnumerable<global::Microsoft.CodeAnalysis.IFieldSymbol> StaticFields
             => symbol.GetMembers().OfType<global::Microsoft.CodeAnalysis.IFieldSymbol>().Where(f => f.IsStatic);
     }
