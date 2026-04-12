@@ -75,4 +75,11 @@ internal static class DiagnosticReporter
         var diagnostic = DiagnosticDescriptors.DoNotDisposeWhenTargetMustBeBoolField(targetName, location);
         context.ReportDiagnostic(diagnostic);
     } // internal static void DoNotDisposeWhenTargetMustBeBoolField (SourceProductionContext, AttributeData)
+
+    internal static void DoNotDisposeWhenNameShouldBeNameof(SourceProductionContext context, ExpressionSyntax syntax)
+    {
+        var location = syntax.GetLocation();
+        var diagnostic = DiagnosticDescriptors.DoNotDisposeWhenNameShouldBeNameof(location);
+        context.ReportDiagnostic(diagnostic);
+    } // internal static void DoNotDisposeWhenNameShouldBeNameof (SourceProductionContext, ExpressionSyntax)
 } // internal static class DiagnosticReporter

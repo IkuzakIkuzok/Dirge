@@ -170,4 +170,20 @@ public sealed partial class DiagnosticTests
             private readonly Stream _stream4 = null!;
         }
         """;
+
+    // lang=C#
+    [TestSource]
+    private static readonly string _literalFieldName = """
+        using Dirge;
+        using System.IO;
+        
+        [AutoDispose]
+        public partial class MyClass
+        {
+            private readonly bool _flag = true;
+
+            [DoNotDisposeWhen({|DIRGE101:"_flag"|}, true)]
+            private readonly Stream _stream1 = null!;
+        }
+        """;
 } // public sealed partial class DiagnosticTests

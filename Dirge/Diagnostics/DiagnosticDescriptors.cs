@@ -10,12 +10,14 @@ internal static class DiagnosticDescriptors
     internal static string DisposeInNonDisposableBaseId => _disposeInNonDisposableBaseId;
     internal static string MissingAccessibleDisposeBoolId => _missingAccessibleDisposeBoolId;
     internal static string DoNotDisposeWhenTargetMustBeBoolFieldId => _doNotDisposeWhenTargetMustBeBoolFieldId;
+    internal static string DoNotDisposeWhenNameShouldBeNameofId => _doNotDisposeWhenNameShouldBeNameofId;
 
     private const string _readonlyStructNotSupportedId = "DIRGE001";
     private const string _typeMustBePartialId = "DIRGE002";
     private const string _disposeInNonDisposableBaseId = "DIRGE003";
     private const string _missingAccessibleDisposeBoolId = "DIRGE004";
     private const string _doNotDisposeWhenTargetMustBeBoolFieldId = "DIRGE005";
+    private const string _doNotDisposeWhenNameShouldBeNameofId = "DIRGE101";
 
 #if !DIAGNOSTIC_ID_ONLY
 
@@ -64,6 +66,15 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true
     );
 
+    private static readonly DiagnosticDescriptor _doNotDisposeWhenNameShouldBeNameof = new(
+        id: _doNotDisposeWhenNameShouldBeNameofId,
+        title: "DoNotDisposeWhen name argument should be nameof(...)",
+        messageFormat: "The name argument in [DoNotDisposeWhen] should be a nameof(...) expression for better refactorability",
+        category: "Design",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true
+    );
+
     internal static Diagnostic ReadonlyStructNotSupported(string typeName, Location? location)
         => Diagnostic.Create(_readonlyStructNotSupported, location, typeName);
 
@@ -78,6 +89,9 @@ internal static class DiagnosticDescriptors
 
     internal static Diagnostic DoNotDisposeWhenTargetMustBeBoolField(string fieldName, Location? location)
         => Diagnostic.Create(_doNotDisposeWhenTargetMustBeBoolField, location, fieldName);
+
+    internal static Diagnostic DoNotDisposeWhenNameShouldBeNameof(Location? location)
+        => Diagnostic.Create(_doNotDisposeWhenNameShouldBeNameof, location);
 
 #endif
 } // internal static class DiagnosticDescriptors

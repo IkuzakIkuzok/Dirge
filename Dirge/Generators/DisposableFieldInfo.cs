@@ -40,6 +40,14 @@ internal record DisposableFieldInfo(string Name, bool IsRefStruct, string? FlagN
         }
         if (!flagField.IsStatic) name = $"this.{name}";
 
+        var nameSyntax = (conditionalAttribute.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax)
+            ?.ArgumentList?.Arguments[0].Expression;
+        if (nameSyntax.IsKind(SyntaxKind.StringLiteralExpression))
+        {
+            DiagnosticReporter.DoNotDisposeWhenNameShouldBeNameof(context, nameSyntax);
+            return null;
+        }
+
         var condArg = conditionalAttribute.ConstructorArguments[1];
         if (condArg.Value is not bool condition) return null;
 

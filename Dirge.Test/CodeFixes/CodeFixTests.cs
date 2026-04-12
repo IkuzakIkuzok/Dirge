@@ -48,4 +48,21 @@ public sealed partial class CodeFixTests
             }
         }
         """;
+
+    // lang=C#
+    [CodeFixSource<UseNameofCodeFixProvider>]
+    private const string _literalFieldName = """
+        using Dirge;
+        using System.IO;
+        
+        [AutoDispose]
+        public partial class MyClass
+        {
+            private readonly bool _flag = true;
+
+        -    [DoNotDisposeWhen({|DIRGE101:"_flag"|}, true)]
+        +    [DoNotDisposeWhen(nameof(_flag), true)]
+            private readonly Stream _stream1 = null!;
+        }
+        """;
 } // public sealed partial class CodeFixTests
