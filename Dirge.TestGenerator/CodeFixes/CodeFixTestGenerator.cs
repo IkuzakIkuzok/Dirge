@@ -74,10 +74,12 @@ partial class {{typeSymbol.Name}}
                 [global::Xunit.Fact]
                 async internal global::System.Threading.Tasks.Task {{testMethodName}}()
                 {
+                    // lang=C#
                     var before = {{beforeDelimiter}}
             {{beforeCode}}
             {{beforeDelimiter}};
 
+                    // lang=C#
                     var after = {{afterDelimiter}}
             {{afterCode}}
             {{afterDelimiter}};
