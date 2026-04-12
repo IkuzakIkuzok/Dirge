@@ -61,30 +61,9 @@ partial class {{typeSymbol.Name}}
 
     private static void GenerateTestMethod(StringBuilder builder, CodeFixSourceInfo testCase)
     {
-        var reader = new StringReader(testCase.Source);
-
-        var beforeBuilder = new StringBuilder();
-        var afterBuilder = new StringBuilder();
-
-        while (reader.ReadLine() is { } line)
-        {
-            if (line.StartsWith("-"))
-            {
-                beforeBuilder.AppendLine(line[1..]);
-            }
-            else if (line.StartsWith("+"))
-            {
-                afterBuilder.AppendLine(line[1..]);
-            }
-            else
-            {
-                beforeBuilder.AppendLine(line);
-                afterBuilder.AppendLine(line);
-            }
-        }
-
-        var beforeCode = beforeBuilder.ToString();
-        var afterCode = afterBuilder.ToString();
+        var sources = new DiffSources(testCase.Source);
+        var beforeCode = sources.Before;
+        var afterCode = sources.After;
 
         var beforeDelimiter = new string('"', GetDelimiterCount(beforeCode));
         var afterDelimiter = new string('"', GetDelimiterCount(afterCode));
