@@ -67,6 +67,19 @@ public sealed partial class DiagnosticTests
 
     // lang=C#
     [TestSource]
+    private static readonly string _staticClass = """
+        using Dirge;
+        using System.IO;
+
+        [AutoDispose]
+        public {|DIRGE006:static|} partial class StaticClass
+        {
+            private static readonly Stream _stream = null!;
+        }
+        """;
+
+    // lang=C#
+    [TestSource]
     private static readonly string _disposeInNonDisposableBase = """
         using Dirge;
         using System.IO;

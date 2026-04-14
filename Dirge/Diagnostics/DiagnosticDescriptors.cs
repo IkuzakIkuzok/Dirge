@@ -10,6 +10,7 @@ internal static class DiagnosticDescriptors
     internal static string DisposeInNonDisposableBaseId => _disposeInNonDisposableBaseId;
     internal static string MissingAccessibleDisposeBoolId => _missingAccessibleDisposeBoolId;
     internal static string DoNotDisposeWhenTargetMustBeBoolFieldId => _doNotDisposeWhenTargetMustBeBoolFieldId;
+    internal static string StaticClassNotSupportedId => _staticClassNotSupportedId;
     internal static string DoNotDisposeWhenNameShouldBeNameofId => _doNotDisposeWhenNameShouldBeNameofId;
 
     private const string _readonlyStructNotSupportedId = "DIRGE001";
@@ -17,6 +18,7 @@ internal static class DiagnosticDescriptors
     private const string _disposeInNonDisposableBaseId = "DIRGE003";
     private const string _missingAccessibleDisposeBoolId = "DIRGE004";
     private const string _doNotDisposeWhenTargetMustBeBoolFieldId = "DIRGE005";
+    private const string _staticClassNotSupportedId = "DIRGE006";
     private const string _doNotDisposeWhenNameShouldBeNameofId = "DIRGE101";
 
 #if !DIAGNOSTIC_ID_ONLY
@@ -66,6 +68,15 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true
     );
 
+    private static readonly DiagnosticDescriptor _staticClassNotSupported = new(
+        id: _staticClassNotSupportedId,
+        title: "Static class is not supported",
+        messageFormat: "The [AutoDispose] attribute cannot be applied to the static class '{0}'",
+        category: "Design",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
     private static readonly DiagnosticDescriptor _doNotDisposeWhenNameShouldBeNameof = new(
         id: _doNotDisposeWhenNameShouldBeNameofId,
         title: "DoNotDisposeWhen name argument should be nameof(...)",
@@ -89,6 +100,9 @@ internal static class DiagnosticDescriptors
 
     internal static Diagnostic DoNotDisposeWhenTargetMustBeBoolField(string fieldName, Location? location)
         => Diagnostic.Create(_doNotDisposeWhenTargetMustBeBoolField, location, fieldName);
+
+    internal static Diagnostic StaticClassNotSupported(string typeName, Location? location)
+        => Diagnostic.Create(_staticClassNotSupported, location, typeName);
 
     internal static Diagnostic DoNotDisposeWhenNameShouldBeNameof(Location? location)
         => Diagnostic.Create(_doNotDisposeWhenNameShouldBeNameof, location);

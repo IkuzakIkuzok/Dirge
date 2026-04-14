@@ -50,6 +50,20 @@ public sealed partial class CodeFixTests
         """;
 
     // lang=C#
+    [CodeFixSource<RemoveStaticCodeFixProvider>]
+    private const string _staticClass = """
+        using Dirge;
+        using System.IO;
+
+        [AutoDispose]
+        -public {|DIRGE006:static|} partial class StaticClass
+        +public partial class StaticClass
+        {
+            private static readonly Stream _stream = null!;
+        }
+        """;
+
+    // lang=C#
     [CodeFixSource<UseNameofCodeFixProvider>]
     private const string _literalFieldName = """
         using Dirge;

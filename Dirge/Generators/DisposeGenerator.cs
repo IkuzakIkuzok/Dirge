@@ -34,6 +34,12 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             return;
         }
 
+        if (targetSymbol.IsStatic)
+        {
+            DiagnosticReporter.StaticClassNotSupported(context, targetSymbol);
+            return;
+        }
+
         var decl = targetSymbol.DeclaringSyntaxReferences
             .Select(r => r.GetSyntax())
             .OfType<TypeDeclarationSyntax>()

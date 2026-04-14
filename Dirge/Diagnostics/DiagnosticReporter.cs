@@ -76,6 +76,20 @@ internal static class DiagnosticReporter
         context.ReportDiagnostic(diagnostic);
     } // internal static void DoNotDisposeWhenTargetMustBeBoolField (SourceProductionContext, AttributeData)
 
+    internal static void StaticClassNotSupported(SourceProductionContext context, INamedTypeSymbol typeSymbol)
+    {
+        var staticTokenLocation = typeSymbol.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .SelectMany(typeDeclaration => typeDeclaration.Modifiers)
+            .FirstOrDefault(modifier => modifier.IsKind(SyntaxKind.StaticKeyword))
+            .GetLocation();
+        var location = staticTokenLocation ?? typeSymbol.Locations.FirstOrDefault();
+
+        var diagnostic = DiagnosticDescriptors.StaticClassNotSupported(typeSymbol.Name, staticTokenLocation);
+        context.ReportDiagnostic(diagnostic);
+    } // internal static void StaticClassNotSupported (SourceProductionContext, INamedTypeSymbol)
+
     internal static void DoNotDisposeWhenNameShouldBeNameof(SourceProductionContext context, ExpressionSyntax syntax)
     {
         var location = syntax.GetLocation();
