@@ -8,35 +8,30 @@ namespace Dirge.Generators;
 
 internal record DisposeGenerationInfo(DisposeGenerationStrategy Strategy, string AccessModifier)
 {
-    internal static DisposeGenerationInfo? Create(INamedTypeSymbol targetType, INamedTypeSymbol disposeSymbol, SourceProductionContext context, Compilation compilation)
+    internal static Result<DisposeGenerationInfo> Create(INamedTypeSymbol targetType, INamedTypeSymbol disposeSymbol, Compilation compilation)
     {
         var disposeMethod = GetBaseTypeMethod(targetType, "Dispose", VoidDispose);
         if (disposeMethod is null)
-            return new(DisposeGenerationStrategy.GenerateRoot, "protected");
+            return new DisposeGenerationInfo(DisposeGenerationStrategy.GenerateRoot, "protected");
 
         var baseIsDisposable = targetType.ImplementsInterface(disposeSymbol);
         if (!baseIsDisposable)
-        {
-            // Base type has `public void Dispose()`, but does not implement `IDisposable`.
-            DiagnosticReporter.DisposeInNonDisposableBase(context, targetType);
-            return null;
-        }
+            return DiagnosticDescriptors.DisposeInNonDisposableBase(targetType);
 
         var disposeBoolMethod = GetBaseTypeMethod(targetType, "Dispose", VirtualVoidDisposeBool);
         if (disposeMethod.IsAbstract)
-            return new(DisposeGenerationStrategy.OverrideDispose, "protected");
+            return new DisposeGenerationInfo(DisposeGenerationStrategy.OverrideDispose, "protected");
 
         if (disposeBoolMethod is null || !compilation.IsSymbolAccessibleWithin(disposeBoolMethod, targetType))
         {
             // Base type has `public void Dispose()`, but no accessible `virtual void Dispose(bool)`.
             // Generating a new Dispose method is dangerous because it may cause resource leaks.
-            DiagnosticReporter.MissingAccessibleDisposeBool(context, targetType);
-            return null;
+            return DiagnosticDescriptors.MissingAccessibleDisposeBool(targetType);
         }
 
         // Base type has accessible `virtual void Dispose(bool)`.
-        return new(DisposeGenerationStrategy.OverrideDisposeBool, GetAccessibilityString(disposeBoolMethod.DeclaredAccessibility));
-    } // internal static DisposeGenerationInfo? Create (INamedTypeSymbol, INamedTypeSymbol, SourceProductionContext, Compilation)
+        return new DisposeGenerationInfo(DisposeGenerationStrategy.OverrideDisposeBool, GetAccessibilityString(disposeBoolMethod.DeclaredAccessibility));
+    } // internal static Result<DisposeGenerationInfo> Create (INamedTypeSymbol, INamedTypeSymbol, Compilation)
 
     private static IMethodSymbol? GetBaseTypeMethod(INamedTypeSymbol targetType, string name, Func<IMethodSymbol, bool> filter)
     {

@@ -2,8 +2,6 @@
 // (c) 2026 Kazuki Kohzuki
 
 using Dirge.Diagnostics;
-using Dirge.Utils;
-using System.Collections.Generic;
 
 namespace Dirge.Generators;
 
@@ -15,63 +13,36 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
         var sources = context.SyntaxProvider.ForAttributeWithMetadataName(
             TypesGenerator.AutoDisposeAttributeName,
             static (node, token) => node is ClassDeclarationSyntax or StructDeclarationSyntax,
-            static (context, token) => context
+            static (context, token) => DisposableTypeInfo.Create(context)
         );
 
         context.RegisterSourceOutput(sources, Execute);
     } // public void Initialize (IncrementalGeneratorInitializationContext)
 
-    private static void Execute(SourceProductionContext context, GeneratorAttributeSyntaxContext source)
+    private static void Execute(SourceProductionContext context, Result<DisposableTypeInfo>? result)
     {
-        var compilation = source.SemanticModel.Compilation;
-        var disposableSymbol = compilation.GetTypeByMetadataName("System.IDisposable");
-        if (disposableSymbol is null) return;
+        if (result is null) return;
 
-        var targetSymbol = (INamedTypeSymbol)source.TargetSymbol;
-        if (targetSymbol.IsReadOnly)
+        if (result.Diagnostic is { } diagnostics)
         {
-            DiagnosticReporter.ReadonlyStructNotSupported(context, targetSymbol);
+            foreach (var diagnostic in diagnostics)
+                context.ReportDiagnostic(diagnostic);
             return;
         }
 
-        if (targetSymbol.IsStatic)
-        {
-            DiagnosticReporter.StaticClassNotSupported(context, targetSymbol);
-            return;
-        }
+        var source = result.Value!;
+        var fields = source.Fields;
 
-        var decl = targetSymbol.DeclaringSyntaxReferences
-            .Select(r => r.GetSyntax())
-            .OfType<TypeDeclarationSyntax>()
-            .FirstOrDefault();
-        if (decl is null) return;
-        if (!EnsureAllAncestorsArePartial(decl, context)) return;
-
-        var attribute = targetSymbol.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == TypesGenerator.AutoDisposeAttributeName);
-        if (attribute is null) return;
-
-        var fields = targetSymbol.GetMembers()
-            .OfType<IFieldSymbol>()
-            .SelectNotNull(f => DisposableFieldInfo.Create(f, targetSymbol, disposableSymbol, context, compilation))
-            .ToArray();
-
-        if (!attribute.TryGetNamedArgumentValue("ReleaseUnmanagedResources", out string? releaseUnmanagedResources))
-            releaseUnmanagedResources = null;
-
+        var releaseUnmanagedResources = source.ReleaseUnmanagedResources;
         if (fields.Length == 0 && string.IsNullOrEmpty(releaseUnmanagedResources)) return;
 
-        var isSealed = targetSymbol.IsSealed;
-        var hasDisposableBase = targetSymbol.ImplementsInterface(disposableSymbol);
+        var isSealed = source.IsSealed;
+        var hasDisposableBase = source.HasDisposableBase;
 
-        var canBeSimple =
-            isSealed
-            && !hasDisposableBase
-            && releaseUnmanagedResources is null;
+        var declarationStack = source.DeclarationStack;
 
-        var declarationStack = GetDeclarationStack(targetSymbol);
-
-        var isGlobalNamespace = targetSymbol.ContainingNamespace.IsGlobalNamespace;
-        var namespaceName = targetSymbol.ContainingNamespace.ToDisplayString();
+        var isGlobalNamespace = source.NamespaceName is null;
+        var namespaceName = source.NamespaceName;
 
         var builder = new CodeBuilder();
         builder.AppendLine("""
@@ -90,12 +61,11 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             builder.Indent();
         }
 
-        var indentOffset = isGlobalNamespace ? 0 : 1;
-        for (var i = 0; i < declarationStack.Count; i++)
+        for (var i = 0; i < declarationStack.Length; i++)
         {
-            var d = declarationStack.Count - 1 - i;
+            var d = declarationStack.Length - 1 - i;
             builder.Append(declarationStack[d].GetDeclaration());
-            if (d == 0 && !targetSymbol.IsRefLikeType) // Do not implement IDisposable for ref structs regardless of the language version
+            if (d == 0 && !source.IsRefLikeType) // Do not implement IDisposable for ref structs regardless of the language version
                 builder.AppendLine(" : global::System.IDisposable");
             else
                 builder.AppendLine();
@@ -111,24 +81,23 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
 
             """);
 
-        if (canBeSimple)
+        if (source.GenerationInfo is { } generation)
         {
-            DisposeGenerationCore.GenerateSimpleDispose(builder, fields);
-        }
-        else
-        {
-            var generation = DisposeGenerationInfo.Create(targetSymbol, disposableSymbol, context, compilation);
             if (generation is null) return; // No need to report diagnostic
 
             if (generation.Strategy == DisposeGenerationStrategy.GenerateRoot)
-                DisposeGenerationCore.GenerateRoot(builder, false, isSealed, fields, targetSymbol.Name, releaseUnmanagedResources);
+                DisposeGenerationCore.GenerateRoot(builder, false, isSealed, fields, source.Name, releaseUnmanagedResources);
             else if (generation.Strategy == DisposeGenerationStrategy.OverrideDispose)
-                DisposeGenerationCore.GenerateRoot(builder, true, isSealed, fields, targetSymbol.Name, releaseUnmanagedResources);
+                DisposeGenerationCore.GenerateRoot(builder, true, isSealed, fields, source.Name, releaseUnmanagedResources);
             else if (generation.Strategy == DisposeGenerationStrategy.OverrideDisposeBool)
-                DisposeGenerationCore.GenerateOverrideDisposeBool(builder, generation.AccessModifier, fields, targetSymbol.Name, releaseUnmanagedResources);
+                DisposeGenerationCore.GenerateOverrideDisposeBool(builder, generation.AccessModifier, fields, source.Name, releaseUnmanagedResources);
+        }
+        else
+        {
+            DisposeGenerationCore.GenerateSimpleDispose(builder, fields);
         }
 
-        for (var i = 0; i < declarationStack.Count; i++)
+        for (var i = 0; i < declarationStack.Length; i++)
         {
             builder.Unindent();
             builder.AppendLine("}");
@@ -140,42 +109,6 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             builder.AppendLine("}");
         }
 
-        context.AddSource($"{targetSymbol.Name}.GeneratedDispose.g.cs", builder.ToString());
+        context.AddSource($"{source.Name}.GeneratedDispose.g.cs", builder.ToString());
     } // private static void Execute (SourceProductionContext, GeneratorAttributeSyntaxContext)
-
-    private static bool EnsureAllAncestorsArePartial(TypeDeclarationSyntax typeDecl, SourceProductionContext context)
-    {
-        SyntaxNode? currentNode = typeDecl;
-
-        while (currentNode is TypeDeclarationSyntax parentTypeDecl)
-        {
-            var isPartial = parentTypeDecl.Modifiers.Any(SyntaxKind.PartialKeyword);
-
-            if (!isPartial)
-            {
-                DiagnosticReporter.TypeMustBePartial(context, parentTypeDecl);
-                return false;
-            }
-
-            currentNode = currentNode.Parent;
-        }
-
-        return true;
-    } // private static bool EnsureAllAncestorsArePartial (TypeDeclarationSyntax, SourceProductionContext)
-
-    private static List<TypeWrapperInfo> GetDeclarationStack(INamedTypeSymbol symbol)
-    {
-        var stack = new List<TypeWrapperInfo>();
-
-        while (symbol is not null)
-        {
-            var info = TypeWrapperInfo.FromTypeSymbol(symbol);
-            if (info is null)
-                break;
-            stack.Add(info);
-            symbol = symbol.ContainingType;
-        }
-
-        return stack;
-    } // private static List<TypeWrapperInfo> GetDeclarationStack (INamedTypeSymbol)
 } // internal sealed class DisposeGenerator : IIncrementalGenerator

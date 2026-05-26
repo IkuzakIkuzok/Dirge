@@ -11,7 +11,7 @@ internal record DisposableFieldInfo(string Name, bool IsRefStruct, string? FlagN
     internal string GetDisposeCall()
         => this.IsRefStruct ? $"this.{this.Name}.Dispose()" : $"this.{this.Name}?.Dispose()";
 
-    internal static DisposableFieldInfo? Create(IFieldSymbol field, INamedTypeSymbol targetType, INamedTypeSymbol disposableSymbol, SourceProductionContext context, Compilation compilation)
+    internal static Result<DisposableFieldInfo>? Create(IFieldSymbol field, INamedTypeSymbol targetType, INamedTypeSymbol disposableSymbol, Compilation compilation)
     {
         if (field.IsStatic) return null;
 
@@ -24,7 +24,7 @@ internal record DisposableFieldInfo(string Name, bool IsRefStruct, string? FlagN
 
         var conditionalAttribute = attributes.FirstOrDefault(a => a.AttributeClass.FullName == TypesGenerator.DoNotDisposeWhenAttributeName);
         if (conditionalAttribute is null)
-            return new(field.Name, isRefStruct, null, false);
+            return new DisposableFieldInfo(field.Name, isRefStruct, null, false);
 
         if (conditionalAttribute.ConstructorArguments.Length != 2) return null;
 
@@ -34,25 +34,19 @@ internal record DisposableFieldInfo(string Name, bool IsRefStruct, string? FlagN
         // 'name' must be a field of the parent type and must be a boolean
         var flagField = targetType.GetMembers(name).OfType<IFieldSymbol>().FirstOrDefault();
         if (flagField?.Type.SpecialType != SpecialType.System_Boolean)
-        {
-            DiagnosticReporter.DoNotDisposeWhenTargetMustBeBoolField(context, conditionalAttribute);
-            return null;
-        }
+            return DiagnosticDescriptors.DoNotDisposeWhenTargetMustBeBoolField(conditionalAttribute);
         if (!flagField.IsStatic) name = $"this.{name}";
 
         var nameSyntax = (conditionalAttribute.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax)
             ?.ArgumentList?.Arguments[0].Expression;
         if (nameSyntax.IsKind(SyntaxKind.StringLiteralExpression))
-        {
-            DiagnosticReporter.DoNotDisposeWhenNameShouldBeNameof(context, nameSyntax);
-            return null;
-        }
+            return DiagnosticDescriptors.DoNotDisposeWhenNameShouldBeNameof(nameSyntax);
 
         var condArg = conditionalAttribute.ConstructorArguments[1];
         if (condArg.Value is not bool condition) return null;
 
-        return new(field.Name, isRefStruct, name, condition);
-    } // internal static DisposableFieldInfo? Create (IFieldSymbol, INamedTypeSymbol, INamedTypeSymbol, SourceProductionContext, Compilation)
+        return new DisposableFieldInfo(field.Name, isRefStruct, name, condition);
+    } // internal static Result<DisposableFieldInfo>? Create (IFieldSymbol, INamedTypeSymbol, INamedTypeSymbol, Compilation)
 
     private static bool IsDisposable(IFieldSymbol field, INamedTypeSymbol targetType, INamedTypeSymbol disposableSymbol, Compilation compilation)
     {

@@ -86,26 +86,107 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true
     );
 
-    internal static Diagnostic ReadonlyStructNotSupported(string typeName, Location? location)
-        => Diagnostic.Create(_readonlyStructNotSupported, location, typeName);
+    internal static DiagnosticInfo ReadonlyStructNotSupported(INamedTypeSymbol typeSymbol)
+    {
+        var readonlyTokenLocation = typeSymbol.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .SelectMany(typeDeclaration => typeDeclaration.Modifiers)
+            .FirstOrDefault(modifier => modifier.IsKind(SyntaxKind.ReadOnlyKeyword))
+            .GetLocation();
 
-    internal static Diagnostic TypeMustBePartial(string typeName, Location? location)
-        => Diagnostic.Create(_typeMustBePartial, location, typeName);
-    
-    internal static Diagnostic DisposeInNonDisposableBase(string baseTypeName, Location? location)
-        => Diagnostic.Create(_disposeInNonDisposableBase, location, baseTypeName);
+        var location = readonlyTokenLocation ?? typeSymbol.Locations.FirstOrDefault();
+        return new(_readonlyStructNotSupportedId, location, new([typeSymbol.Name]));
+    } // internal static DiagnosticInfo ReadonlyStructNotSupported (INamedTypeSymbol)
 
-    internal static Diagnostic MissingAccessibleDisposeBool(string baseTypeName, string targetTypeName, Location? location)
-        => Diagnostic.Create(_missingAccessibleDisposeBool, location, baseTypeName, targetTypeName);
+    internal static DiagnosticInfo TypeMustBePartial(TypeDeclarationSyntax typeDeclaration)
+    {
+        var location = typeDeclaration.Identifier.GetLocation();
+        return new(_typeMustBePartialId, location, new([typeDeclaration.Identifier.Text]));
+    } // internal static DiagnosticInfo TypeMustBePartial (TypeDeclarationSyntax)
 
-    internal static Diagnostic DoNotDisposeWhenTargetMustBeBoolField(string fieldName, Location? location)
-        => Diagnostic.Create(_doNotDisposeWhenTargetMustBeBoolField, location, fieldName);
+    internal static DiagnosticInfo DisposeInNonDisposableBase(INamedTypeSymbol typeSymbol)
+    {
+        var baseType = typeSymbol.BaseType;
+        var baseTypeName = baseType?.ToDisplayString() ?? "<unknown>";
 
-    internal static Diagnostic StaticClassNotSupported(string typeName, Location? location)
-        => Diagnostic.Create(_staticClassNotSupported, location, typeName);
+        var baseListLocation = typeSymbol.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .FirstOrDefault()
+            ?.BaseList?.GetLocation();
 
-    internal static Diagnostic DoNotDisposeWhenNameShouldBeNameof(Location? location)
-        => Diagnostic.Create(_doNotDisposeWhenNameShouldBeNameof, location);
+        var location = baseListLocation ?? typeSymbol.Locations.FirstOrDefault();
+        return new(_disposeInNonDisposableBaseId, location, new([baseTypeName]));
+    } // internal static DiagnosticInfo DisposeInNonDisposableBase (INamedTypeSymbol)
+
+    internal static DiagnosticInfo MissingAccessibleDisposeBool(INamedTypeSymbol typeSymbol)
+    {
+        var baseType = typeSymbol.BaseType;
+        var baseTypeName = baseType?.ToDisplayString() ?? "<unknown>";
+        var targetTypeName = typeSymbol.ToDisplayString();
+
+        var baseListLocation = typeSymbol.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .FirstOrDefault()
+            ?.BaseList?.GetLocation();
+
+        var location = baseListLocation ?? typeSymbol.Locations.FirstOrDefault();
+        return new(_missingAccessibleDisposeBoolId, location, new([baseTypeName, targetTypeName]));
+    } // internal static DiagnosticInfo MissingAccessibleDisposeBool (INamedTypeSymbol)
+
+    internal static DiagnosticInfo DoNotDisposeWhenTargetMustBeBoolField(AttributeData attribute)
+    {
+        var targetName = attribute.ConstructorArguments.FirstOrDefault().Value as string ?? "<unknown>";
+
+        // get location of the first argument of the attribute
+        var firstArgument = attribute.ApplicationSyntaxReference
+            ?.GetSyntax()
+            .DescendantNodes()
+            .OfType<AttributeArgumentSyntax>()
+            .FirstOrDefault();
+        var argumentLocation = firstArgument?.Expression.GetLocation();
+        var location = argumentLocation ?? attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation();
+        return new(_doNotDisposeWhenTargetMustBeBoolFieldId, location, new([targetName]));
+    } // internal static DiagnosticInfo DoNotDisposeWhenTargetMustBeBoolField (AttributeData)
+
+    internal static DiagnosticInfo StaticClassNotSupported(INamedTypeSymbol typeSymbol)
+    {
+        var staticTokenLocation = typeSymbol.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .SelectMany(typeDeclaration => typeDeclaration.Modifiers)
+            .FirstOrDefault(modifier => modifier.IsKind(SyntaxKind.StaticKeyword))
+            .GetLocation();
+        var location = staticTokenLocation ?? typeSymbol.Locations.FirstOrDefault();
+        return new(_staticClassNotSupportedId, location, new([typeSymbol.Name]));
+    } // internal static DiagnosticInfo StaticClassNotSupported (INamedTypeSymbol)
+
+    internal static DiagnosticInfo DoNotDisposeWhenNameShouldBeNameof(ExpressionSyntax syntax)
+    {
+        var location = syntax.GetLocation();
+        return new(_doNotDisposeWhenNameShouldBeNameofId, location, Array.Empty<string>());
+    } // internal static DiagnosticInfo DoNotDisposeWhenNameShouldBeNameof (ExpressionSyntax)
+
+    internal static Diagnostic GetDiagnostic(DiagnosticInfo diagnosticInfo)
+    {
+        var diagnosticDescriptor = GetDescriptor(diagnosticInfo.Id);
+        return Diagnostic.Create(diagnosticDescriptor, diagnosticInfo.Location, diagnosticInfo.Arguments);
+    }
+
+    private static DiagnosticDescriptor GetDescriptor(string id)
+        => id switch
+        {
+            _readonlyStructNotSupportedId => _readonlyStructNotSupported,
+            _typeMustBePartialId => _typeMustBePartial,
+            _disposeInNonDisposableBaseId => _disposeInNonDisposableBase,
+            _missingAccessibleDisposeBoolId => _missingAccessibleDisposeBool,
+            _doNotDisposeWhenTargetMustBeBoolFieldId => _doNotDisposeWhenTargetMustBeBoolField,
+            _staticClassNotSupportedId => _staticClassNotSupported,
+            _doNotDisposeWhenNameShouldBeNameofId => _doNotDisposeWhenNameShouldBeNameof,
+            _ => throw new ArgumentException($"Unknown diagnostic ID: {id}")
+        };
 
 #endif
 } // internal static class DiagnosticDescriptors
