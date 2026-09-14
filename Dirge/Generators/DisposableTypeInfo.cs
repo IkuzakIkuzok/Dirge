@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace Dirge.Generators;
 
-internal record DisposableTypeInfo(string Name, string? NamespaceName, EquatableArray<TypeWrapperInfo> DeclarationStack, bool IsSealed, bool HasDisposableBase, bool IsRefLikeType, string? ReleaseUnmanagedResources, EquatableArray<DisposableFieldInfo> Fields, DisposeGenerationInfo? GenerationInfo)
+internal record DisposableTypeInfo(string Name, string? NamespaceName, EquatableArray<TypeWrapperInfo> DeclarationStack, bool IsSealed, bool IsRefLikeType, string? ReleaseUnmanagedResources, EquatableArray<DisposableFieldInfo> Fields, DisposeGenerationInfo GenerationInfo)
 {
     internal static Result<DisposableTypeInfo>? Create(GeneratorAttributeSyntaxContext context)
     {
@@ -40,13 +40,7 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
         var namespaceName = targetSymbol.ContainingNamespace.IsGlobalNamespace ? null : targetSymbol.ContainingNamespace.ToDisplayString();
         var declarationStack = GetDeclarationStack(targetSymbol);
         var isSealed = targetSymbol.IsSealed;
-        var hasDisposableBase = targetSymbol.ImplementsInterface(disposableSymbol);
         var isRefLikeType = targetSymbol.IsRefLikeType;
-
-        var canBeSimple =
-            isSealed
-            && !hasDisposableBase
-            && releaseUnmanagedResources is null;
 
         var fieldResults = targetSymbol.GetMembers()
             .OfType<IFieldSymbol>()
@@ -64,16 +58,11 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
         if (diagnostics.Count > 0)
             return diagnostics.ToArray();
 
-        DisposeGenerationInfo? generationInfo = null;
-        if (!canBeSimple)
-        {
-            var generationInfoResult = DisposeGenerationInfo.Create(targetSymbol, disposableSymbol, compilation);
-            if (!generationInfoResult.IsSuccess)
-                return generationInfoResult.Diagnostic!;
-            generationInfo = generationInfoResult.Value;
-        }
+        var generationInfoResult = DisposeGenerationInfo.Create(targetSymbol, disposableSymbol, compilation, releaseUnmanagedResources);
+        if (!generationInfoResult.IsSuccess)
+            return generationInfoResult.Diagnostic!;
         
-        return new DisposableTypeInfo(name, namespaceName, declarationStack, isSealed, hasDisposableBase, isRefLikeType, releaseUnmanagedResources, fields, generationInfo);
+        return new DisposableTypeInfo(name, namespaceName, declarationStack, isSealed, isRefLikeType, releaseUnmanagedResources, fields, generationInfoResult.Value!);
     } // internal static DisposableTypeInfo? Create (GeneratorAttributeSyntaxContext)
 
     private static DiagnosticInfo? EnsureAllAncestorsArePartial(TypeDeclarationSyntax typeDecl)
@@ -108,4 +97,4 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
 
         return stack.ToArray();
     } // private static EquatableArray<string> GetDeclarationStack (TypeDeclarationSyntax)
-} // internal record DisposableTypeInfo (string, string?, EquatableArray<TypeWrapperInfo>, bool, bool, bool, string?, EquatableArray<DisposableFieldInfo>, DisposeGenerationInfo?)
+} // internal record DisposableTypeInfo (string, string?, EquatableArray<TypeWrapperInfo>, bool, bool, string?, EquatableArray<DisposableFieldInfo>, DisposeGenerationInfo)

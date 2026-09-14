@@ -8,9 +8,6 @@ namespace Dirge.Generators;
 
 internal record DisposableFieldInfo(string Name, bool IsRefStruct, string? FlagName, bool FlagCondition)
 {
-    internal string GetDisposeCall()
-        => this.IsRefStruct ? $"this.{this.Name}.Dispose()" : $"this.{this.Name}?.Dispose()";
-
     internal static Result<DisposableFieldInfo>? Create(IFieldSymbol field, INamedTypeSymbol targetType, INamedTypeSymbol disposableSymbol, Compilation compilation)
     {
         if (field.IsStatic) return null;

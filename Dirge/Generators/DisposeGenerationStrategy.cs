@@ -5,6 +5,7 @@ namespace Dirge.Generators;
 
 internal enum DisposeGenerationStrategy
 {
+    GenerateSimple,
     GenerateRoot,
     OverrideDispose,
     OverrideDisposeBool,

@@ -36,9 +36,6 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
         var releaseUnmanagedResources = source.ReleaseUnmanagedResources;
         if (fields.Length == 0 && string.IsNullOrEmpty(releaseUnmanagedResources)) return;
 
-        var isSealed = source.IsSealed;
-        var hasDisposableBase = source.HasDisposableBase;
-
         var declarationStack = source.DeclarationStack;
 
         var isGlobalNamespace = source.NamespaceName is null;
@@ -81,21 +78,7 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
 
             """);
 
-        if (source.GenerationInfo is { } generation)
-        {
-            if (generation is null) return; // No need to report diagnostic
-
-            if (generation.Strategy == DisposeGenerationStrategy.GenerateRoot)
-                DisposeGenerationCore.GenerateRoot(builder, false, isSealed, fields, source.Name, releaseUnmanagedResources);
-            else if (generation.Strategy == DisposeGenerationStrategy.OverrideDispose)
-                DisposeGenerationCore.GenerateRoot(builder, true, isSealed, fields, source.Name, releaseUnmanagedResources);
-            else if (generation.Strategy == DisposeGenerationStrategy.OverrideDisposeBool)
-                DisposeGenerationCore.GenerateOverrideDisposeBool(builder, generation.AccessModifier, fields, source.Name, releaseUnmanagedResources);
-        }
-        else
-        {
-            DisposeGenerationCore.GenerateSimpleDispose(builder, fields);
-        }
+        DisposeGenerationCore.Generate(builder, source);
 
         for (var i = 0; i < declarationStack.Length; i++)
         {

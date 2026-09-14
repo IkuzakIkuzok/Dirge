@@ -8,8 +8,11 @@ namespace Dirge.Generators;
 
 internal record DisposeGenerationInfo(DisposeGenerationStrategy Strategy, string AccessModifier)
 {
-    internal static Result<DisposeGenerationInfo> Create(INamedTypeSymbol targetType, INamedTypeSymbol disposeSymbol, Compilation compilation)
+    internal static Result<DisposeGenerationInfo> Create(INamedTypeSymbol targetType, INamedTypeSymbol disposeSymbol, Compilation compilation, string? releaseUnmanagedResources)
     {
+        if (targetType.IsSealed && !targetType.ImplementsInterface(disposeSymbol) && releaseUnmanagedResources is null)
+            return new DisposeGenerationInfo(DisposeGenerationStrategy.GenerateSimple, "");
+
         var disposeMethod = GetBaseTypeMethod(targetType, "Dispose", VoidDispose);
         if (disposeMethod is null)
             return new DisposeGenerationInfo(DisposeGenerationStrategy.GenerateRoot, "protected");
@@ -31,7 +34,7 @@ internal record DisposeGenerationInfo(DisposeGenerationStrategy Strategy, string
 
         // Base type has accessible `virtual void Dispose(bool)`.
         return new DisposeGenerationInfo(DisposeGenerationStrategy.OverrideDisposeBool, GetAccessibilityString(disposeBoolMethod.DeclaredAccessibility));
-    } // internal static Result<DisposeGenerationInfo> Create (INamedTypeSymbol, INamedTypeSymbol, Compilation)
+    } // internal static Result<DisposeGenerationInfo> Create (INamedTypeSymbol, INamedTypeSymbol, Compilation, string?)
 
     private static IMethodSymbol? GetBaseTypeMethod(INamedTypeSymbol targetType, string name, Func<IMethodSymbol, bool> filter)
     {
@@ -64,4 +67,4 @@ internal record DisposeGenerationInfo(DisposeGenerationStrategy Strategy, string
             Accessibility.ProtectedAndInternal => "private protected",
             _ => "protected"
         };
-} // internal record DisposeGenerationInfo (DisposeGenerationStrategy, bool, string)
+} // internal record DisposeGenerationInfo (DisposeGenerationStrategy, string)

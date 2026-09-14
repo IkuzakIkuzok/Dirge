@@ -1,11 +1,34 @@
-﻿
 // (c) 2026 Kazuki Kohzuki
 
 namespace Dirge.Generators;
 
 internal static class DisposeGenerationCore
 {
-    internal static void GenerateSimpleDispose(CodeBuilder builder, DisposableFieldInfo[] fields)
+    internal static void Generate(CodeBuilder builder, DisposableTypeInfo source)
+    {
+        var generation = source.GenerationInfo;
+        switch (generation.Strategy)
+        {
+            case DisposeGenerationStrategy.GenerateSimple:
+                GenerateSimpleDispose(builder, source.Fields);
+                break;
+            case DisposeGenerationStrategy.GenerateRoot:
+            case DisposeGenerationStrategy.OverrideDispose:
+                GenerateRoot(builder, generation.Strategy == DisposeGenerationStrategy.OverrideDispose,
+                    source.IsSealed, source.Fields, source.ReleaseUnmanagedResources);
+                break;
+            case DisposeGenerationStrategy.OverrideDisposeBool:
+                GenerateDisposeBool(builder, $"override {generation.AccessModifier}", source.Fields,
+                    source.ReleaseUnmanagedResources, callBase: true);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(generation.Strategy));
+        }
+
+        GenerateFinalizer(builder, source.Name, source.ReleaseUnmanagedResources);
+    } // internal static void Generate (CodeBuilder, DisposableTypeInfo)
+
+    private static void GenerateSimpleDispose(CodeBuilder builder, DisposableFieldInfo[] fields)
     {
         builder.AppendLine("""
             public void Dispose()
@@ -17,7 +40,7 @@ internal static class DisposeGenerationCore
             """);
 
         builder.Indent(2);
-        GenerateDisposeCalls(builder, fields);
+        DisposeCallGenerator.Generate(builder, fields);
         builder.Unindent(2);
 
         builder.AppendLine("""
@@ -28,9 +51,9 @@ internal static class DisposeGenerationCore
                 }
             }
             """);
-    } // internal static void GenerateSimpleDispose (CodeBuilder builder, DisposableFieldInfo[] fields)
+    } // private static void GenerateSimpleDispose (CodeBuilder builder, DisposableFieldInfo[] fields)
 
-    internal static void GenerateRoot(CodeBuilder builder, bool overrideDispose, bool isSealed, DisposableFieldInfo[] fields, string className, string? releaseUnmanagedResources)
+    private static void GenerateRoot(CodeBuilder builder, bool overrideDispose, bool isSealed, DisposableFieldInfo[] fields, string? releaseUnmanagedResources)
     {
         if (overrideDispose)
             builder.Append("override ");
@@ -54,9 +77,14 @@ internal static class DisposeGenerationCore
         }
 
         var mod = isSealed ? "private" : "protected virtual";
-        builder.AppendLine($$"""
+        builder.AppendLine();
+        GenerateDisposeBool(builder, mod, fields, releaseUnmanagedResources, callBase: false);
+    } // private static void GenerateRoot (CodeBuilder, bool, bool, DisposableFieldInfo[], string?)
 
-            {{mod}} void Dispose(bool disposing)
+    private static void GenerateDisposeBool(CodeBuilder builder, string modifiers, DisposableFieldInfo[] fields, string? releaseUnmanagedResources, bool callBase)
+    {
+        builder.AppendLine($$"""
+            {{modifiers}} void Dispose(bool disposing)
             {
                 if (this.__generated_disposed) return;
 
@@ -70,7 +98,7 @@ internal static class DisposeGenerationCore
             builder.Indent();
             builder.AppendLine("if (disposing)");
             builder.AppendLine('{');
-            GenerateDisposeCalls(builder.Indented, fields);
+            DisposeCallGenerator.Generate(builder.Indented, fields);
             builder.AppendLine('}');
             builder.Unindent();
         }
@@ -89,10 +117,21 @@ internal static class DisposeGenerationCore
                 finally
                 {
                     this.__generated_disposed = true;
+            """);
+        if (callBase)
+        {
+            builder.Indent(2);
+            builder.AppendLine("base.Dispose(disposing);");
+            builder.Unindent(2);
+        }
+        builder.AppendLine("""
                 }
             }
             """);
+    } // private static void GenerateDisposeBool (CodeBuilder, string, DisposableFieldInfo[], string?, bool)
 
+    private static void GenerateFinalizer(CodeBuilder builder, string className, string? releaseUnmanagedResources)
+    {
         if (string.IsNullOrWhiteSpace(releaseUnmanagedResources)) return;
 
         builder.AppendLine($$"""
@@ -102,138 +141,5 @@ internal static class DisposeGenerationCore
                 Dispose(false);
             }
             """);
-    } // internal static void GenerateRoot (CodeBuilder, bool, DisposableFieldInfo[], string, string?)
-    
-    internal static void GenerateOverrideDisposeBool(CodeBuilder builder, string accessModifier, DisposableFieldInfo[] fields, string className, string? releaseUnmanagedResources)
-    {
-        builder.Append("override ");
-        builder.Append(accessModifier);
-        builder.AppendLine("""
-             void Dispose(bool disposing)
-            {
-                if (this.__generated_disposed) return;
-
-                try
-                {
-            """);
-        builder.Indent();
-
-        if (fields.Length > 0)
-        {
-            builder.Indent();
-            builder.AppendLine("if (disposing)");
-            builder.AppendLine('{');
-            GenerateDisposeCalls(builder.Indented, fields);
-            builder.AppendLine('}');
-            builder.Unindent();
-        }
-
-        if (!string.IsNullOrWhiteSpace(releaseUnmanagedResources))
-        {
-            builder.AppendLine();
-            builder.Append("    ");
-            builder.Append(releaseUnmanagedResources!);
-            builder.AppendLine("();");
-        }
-
-        builder.Unindent();
-        builder.AppendLine("""
-                }
-                finally
-                {
-                    this.__generated_disposed = true;
-                    base.Dispose(disposing);
-                }
-            }
-            """);
-
-        if (string.IsNullOrWhiteSpace(releaseUnmanagedResources)) return;
-
-        builder.AppendLine($$"""
-
-            ~{{className}}()
-            {
-                Dispose(false);
-            }
-            """);
-    } // internal static void GenerateOverrideDisposeBool (CodeBuilder, string, DisposableFieldInfo[], string, string?)
-
-    #region dispose calls
-
-    private static void GenerateDisposeCalls(CodeBuilder builder, DisposableFieldInfo[] fields)
-    {
-        var fieldsGroup = fields.GroupBy(f => f.FlagName);
-
-        var alwaysDisposeFields = fieldsGroup.Where(g => g.Key is null).SelectMany(g => g);
-        foreach (var f in alwaysDisposeFields)
-        {
-            builder.Append(f.GetDisposeCall());
-            builder.AppendLine(';');
-        }
-
-        foreach (var group in fieldsGroup.Where(g => g.Key is not null))
-        {
-            builder.AppendLine();
-            GenerateConditionalDisposeCalls(builder, group);
-        }
-    } // private static void GenerateDisposeCalls (CodeBuilder, DisposableFieldInfo[])
-
-    private static void GenerateConditionalDisposeCalls(CodeBuilder builder, IGrouping<string?, DisposableFieldInfo> group)
-    {
-        var disposeWhenTrue = group.Where(f => !f.FlagCondition).ToArray();
-        var disposeWhenFalse = group.Where(f => f.FlagCondition).ToArray();
-
-        if (disposeWhenTrue.Length == 0 || disposeWhenFalse.Length == 0)
-        {
-            var condition = disposeWhenTrue.Length > 0 ? group.Key : $"!{group.Key}";
-            builder.AppendLine($"if ({condition})");
-            builder.AppendLine('{');
-
-            using (builder.BeginIndent())
-            {
-                foreach (var f in disposeWhenTrue.Length > 0 ? disposeWhenTrue : disposeWhenFalse)
-                {
-                    builder.Append(f.GetDisposeCall());
-                    builder.AppendLine(';');
-                }
-            }
-                
-
-            builder.AppendLine('}');
-
-            return;
-        }
-
-        builder.AppendLine($"if ({group.Key})");
-        builder.AppendLine('{');
-
-        using (builder.BeginIndent())
-        {
-            foreach (var f in disposeWhenTrue)
-            {
-                builder.Append(f.GetDisposeCall());
-                builder.AppendLine(';');
-            }
-        }
-        
-
-        builder.AppendLine("""
-            }
-            else
-            {
-            """);
-
-        using (builder.BeginIndent())
-        {
-            foreach (var f in disposeWhenFalse)
-            {
-                builder.Append(f.GetDisposeCall());
-                builder.AppendLine(';');
-            }
-        }
-        
-        builder.AppendLine('}');
-    } // private static void GenerateConditionalDisposeCalls (CodeBuilder, IGrouping<string?, DisposableFieldInfo> group)
-
-    #endregion dispose calls
+    } // private static void GenerateFinalizer (CodeBuilder, string, string?)
 } // internal static class DisposeGenerationCore
