@@ -31,6 +31,9 @@ namespace Dirge
     [global::System.AttributeUsage(global::System.AttributeTargets.Class | global::System.AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
     internal sealed class AutoDisposeAttribute : global::System.Attribute
     {
+        /// <summary>Also generates asynchronous disposal for a partial class.</summary>
+        public bool IncludeAsync { get; set; } = false;
+
         public string? ReleaseUnmanagedResources { get; set; } = null;
 
         internal AutoDisposeAttribute() { }

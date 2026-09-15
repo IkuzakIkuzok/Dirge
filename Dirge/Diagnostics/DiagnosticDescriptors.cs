@@ -19,9 +19,17 @@ internal static class DiagnosticDescriptors
     private const string _missingAccessibleDisposeBoolId = "DIRGE004";
     private const string _doNotDisposeWhenTargetMustBeBoolFieldId = "DIRGE005";
     private const string _staticClassNotSupportedId = "DIRGE006";
+    private const string _invalidAsyncDisposeId = "DIRGE007";
     private const string _doNotDisposeWhenNameShouldBeNameofId = "DIRGE101";
 
 #if !DIAGNOSTIC_ID_ONLY
+
+    private static readonly DiagnosticDescriptor _invalidAsyncDispose = new(
+        _invalidAsyncDisposeId, "Unsupported asynchronous disposal configuration",
+        "Cannot generate asynchronous disposal for '{0}': {1}", "Design", DiagnosticSeverity.Error, true);
+
+    internal static DiagnosticInfo InvalidAsyncDispose(INamedTypeSymbol typeSymbol, string reason)
+        => new(_invalidAsyncDisposeId, typeSymbol.Locations.FirstOrDefault(), new([typeSymbol.Name, reason]));
 
     private static readonly DiagnosticDescriptor _readonlyStructNotSupported = new(
         id: _readonlyStructNotSupportedId,
@@ -184,6 +192,7 @@ internal static class DiagnosticDescriptors
             _missingAccessibleDisposeBoolId => _missingAccessibleDisposeBool,
             _doNotDisposeWhenTargetMustBeBoolFieldId => _doNotDisposeWhenTargetMustBeBoolField,
             _staticClassNotSupportedId => _staticClassNotSupported,
+            _invalidAsyncDisposeId => _invalidAsyncDispose,
             _doNotDisposeWhenNameShouldBeNameofId => _doNotDisposeWhenNameShouldBeNameof,
             _ => throw new ArgumentException($"Unknown diagnostic ID: {id}")
         };

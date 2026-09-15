@@ -233,6 +233,22 @@ public sealed partial class DisposeGenerationTest
         }
         """;
 
+    // lang=C#
+    [TestSource]
+    private static readonly string _legacyChildWithoutResources = """
+        using Dirge;
+
+        class Parent : System.IDisposable
+        {
+            public void Dispose() { }
+
+            protected virtual void Dispose(bool disposing) { }
+        }
+
+        [AutoDispose]
+        partial class Child : Parent { }
+        """;
+
     private static readonly string[] _ignoreFiles = [
         "ExtensionMethods.g.cs",
         "Microsoft.CodeAnalysis.EmbeddedAttribute.cs",

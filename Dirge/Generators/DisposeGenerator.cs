@@ -34,7 +34,9 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
         var fields = source.Fields;
 
         var releaseUnmanagedResources = source.ReleaseUnmanagedResources;
-        if (fields.Length == 0 && string.IsNullOrEmpty(releaseUnmanagedResources)) return;
+        if (fields.Length == 0 && string.IsNullOrEmpty(releaseUnmanagedResources)
+            && (source.AsyncGenerationInfo is null || source.AsyncGenerationInfo.OverrideCore))
+            return; // Inherit existing implementations when there is no additional cleanup.
 
         var declarationStack = source.DeclarationStack;
 
@@ -63,7 +65,9 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             var d = declarationStack.Length - 1 - i;
             builder.Append(declarationStack[d].GetDeclaration());
             if (d == 0 && !source.IsRefLikeType) // Do not implement IDisposable for ref structs regardless of the language version
-                builder.AppendLine(" : global::System.IDisposable");
+                builder.AppendLine(source.AsyncGenerationInfo is null
+                    ? " : global::System.IDisposable"
+                    : " : global::System.IDisposable, global::System.IAsyncDisposable");
             else
                 builder.AppendLine();
             builder.AppendLine("{");
@@ -79,6 +83,8 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             """);
 
         DisposeGenerationCore.Generate(builder, source);
+        if (source.AsyncGenerationInfo is not null)
+            AsyncDisposeGenerationCore.Generate(builder, source);
 
         for (var i = 0; i < declarationStack.Length; i++)
         {

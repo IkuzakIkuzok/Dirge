@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace Dirge.Generators;
 
-internal record DisposableTypeInfo(string Name, string? NamespaceName, EquatableArray<TypeWrapperInfo> DeclarationStack, bool IsSealed, bool IsRefLikeType, string? ReleaseUnmanagedResources, EquatableArray<DisposableFieldInfo> Fields, DisposeGenerationInfo GenerationInfo)
+internal record DisposableTypeInfo(string Name, string? NamespaceName, EquatableArray<TypeWrapperInfo> DeclarationStack, bool IsSealed, bool IsRefLikeType, string? ReleaseUnmanagedResources, EquatableArray<DisposableFieldInfo> Fields, DisposeGenerationInfo GenerationInfo, AsyncDisposeGenerationInfo? AsyncGenerationInfo = null)
 {
     internal static Result<DisposableTypeInfo>? Create(GeneratorAttributeSyntaxContext context)
     {
@@ -16,6 +16,14 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
         if (disposableSymbol is null) return null;
 
         var targetSymbol = (INamedTypeSymbol)context.TargetSymbol;
+        var attribute = context.Attributes.FirstOrDefault();
+        if (attribute is null) return null;
+        var includeAsync = attribute.TryGetNamedArgumentValue("IncludeAsync", out bool enabled) && enabled;
+        var asyncDisposableSymbol = includeAsync ? compilation.GetTypeByMetadataName("System.IAsyncDisposable") : null;
+        if (includeAsync && (asyncDisposableSymbol is null || compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask") is null))
+            return DiagnosticDescriptors.InvalidAsyncDispose(targetSymbol, "The target framework must provide System.IAsyncDisposable and System.Threading.Tasks.ValueTask");
+        if (includeAsync && targetSymbol.TypeKind != TypeKind.Class)
+            return DiagnosticDescriptors.InvalidAsyncDispose(targetSymbol, "Only classes support generated asynchronous disposal");
         if (targetSymbol.IsReadOnly)
             return DiagnosticDescriptors.ReadonlyStructNotSupported(targetSymbol);
 
@@ -30,9 +38,6 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
         if (EnsureAllAncestorsArePartial(decl) is { } diagnostic)
             return diagnostic;
 
-        var attribute = context.Attributes.FirstOrDefault();
-        if (attribute is null) return null;
-
         if (!attribute.TryGetNamedArgumentValue("ReleaseUnmanagedResources", out string? releaseUnmanagedResources))
             releaseUnmanagedResources = null;
 
@@ -44,7 +49,7 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
 
         var fieldResults = targetSymbol.GetMembers()
             .OfType<IFieldSymbol>()
-            .SelectNotNull(f => DisposableFieldInfo.Create(f, targetSymbol, disposableSymbol, compilation))
+            .SelectNotNull(f => DisposableFieldInfo.Create(f, targetSymbol, disposableSymbol, compilation, asyncDisposableSymbol))
             .ToArray();
         var fields = new DisposableFieldInfo[fieldResults.Length];
         var diagnostics = new List<DiagnosticInfo>();
@@ -58,11 +63,21 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
         if (diagnostics.Count > 0)
             return diagnostics.ToArray();
 
-        var generationInfoResult = DisposeGenerationInfo.Create(targetSymbol, disposableSymbol, compilation, releaseUnmanagedResources);
+        AsyncDisposeGenerationInfo? asyncGeneration = null;
+        if (includeAsync)
+        {
+            var asyncResult = AsyncDisposeGenerationInfo.Create(targetSymbol, disposableSymbol, asyncDisposableSymbol!, compilation);
+            if (!asyncResult.IsSuccess) return asyncResult.Diagnostic!;
+            asyncGeneration = asyncResult.Value!;
+        }
+
+        var generationInfoResult = asyncGeneration is not null
+            ? Result<DisposeGenerationInfo>.Success(asyncGeneration.SyncGeneration)
+            : DisposeGenerationInfo.Create(targetSymbol, disposableSymbol, compilation, releaseUnmanagedResources);
         if (!generationInfoResult.IsSuccess)
             return generationInfoResult.Diagnostic!;
         
-        return new DisposableTypeInfo(name, namespaceName, declarationStack, isSealed, isRefLikeType, releaseUnmanagedResources, fields, generationInfoResult.Value!);
+        return new DisposableTypeInfo(name, namespaceName, declarationStack, isSealed, isRefLikeType, releaseUnmanagedResources, fields, generationInfoResult.Value!, asyncGeneration);
     } // internal static DisposableTypeInfo? Create (GeneratorAttributeSyntaxContext)
 
     private static DiagnosticInfo? EnsureAllAncestorsArePartial(TypeDeclarationSyntax typeDecl)
