@@ -40,6 +40,8 @@ internal sealed class VerifyTestGenerator : IIncrementalGenerator
         var versions = GetLanguageVersions(langVersionArg.Values).Distinct().ToArray();
         if (versions.Length == 0) return;
 
+        var testGroupName = typeSymbol.Name;
+
         var fields =
             typeSymbol.GetMembers()
                       .OfType<IFieldSymbol>()
@@ -73,7 +75,7 @@ partial class {{typeSymbol.Name}}
             var testName = testMethodName;
 
             var directory = Path.GetDirectoryName(field.FilePath) ?? "";
-            var snapshotDirectory = Path.Combine(directory, "Snapshots", testName);
+            var snapshotDirectory = Path.Combine(directory, "Snapshots", testGroupName, testName);
 
             var mod = field.SourceIsStatic ? string.Empty : "this.";
             builder.AppendLine($$"""
