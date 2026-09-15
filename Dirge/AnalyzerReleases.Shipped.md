@@ -26,3 +26,11 @@ DIRGE101 | Design   | Warning  | DoNotDisposeWhen name argument should be nameof
 Rule ID  | Category | Severity | Notes
 ---------|----------|----------|------
 DIRGE006 | Design   | Error    | Static class is not supported
+
+## Release 4.0.0
+
+### New Rules
+
+Rule ID  | Category | Severity | Notes
+---------|----------|----------|------
+DIRGE007 | Design   | Error    | Unsupported asynchronous disposal configuration
