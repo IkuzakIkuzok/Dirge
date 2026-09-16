@@ -28,12 +28,20 @@ internal sealed class TypesGenerator : IIncrementalGenerator
 
 namespace Dirge
 {
+    /// <summary>
+    /// Generates IDisposable implementation for a partial class or struct.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Class | global::System.AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
     internal sealed class AutoDisposeAttribute : global::System.Attribute
     {
-        /// <summary>Also generates asynchronous disposal for a partial class.</summary>
+        /// <summary>
+        /// Also generates asynchronous disposal for a partial class.
+        /// </summary>
         public bool IncludeAsync { get; set; } = false;
 
+        /// <summary>
+        /// The name of the method that releases unmanaged resources. If not specified, no finalizer will be generated.
+        /// </summary>
         public string? ReleaseUnmanagedResources { get; set; } = null;
 
         internal AutoDisposeAttribute() { }
@@ -47,6 +55,9 @@ namespace Dirge
 
 namespace Dirge
 {
+    /// <summary>
+    /// Marks a field to be excluded from the generated IDisposable implementation.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
     internal sealed class DoNotDisposeAttribute : global::System.Attribute
     {
@@ -61,11 +72,20 @@ namespace Dirge
 
 namespace Dirge
 {
+    /// <summary>
+    /// Marks a field to be excluded from the generated IDisposable implementation when a specified boolean flag is set to a certain value.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
     internal sealed class DoNotDisposeWhenAttribute : global::System.Attribute
     {
+        /// <summary>
+        /// The name of the boolean flag.
+        /// </summary>
         internal string FlagName { get; }
 
+        /// <summary>
+        /// The condition the boolean flag must be set to.
+        /// </summary>
         internal bool FlagCondition { get; }
 
         internal DoNotDisposeWhenAttribute(string flagName, bool flagCondition)
