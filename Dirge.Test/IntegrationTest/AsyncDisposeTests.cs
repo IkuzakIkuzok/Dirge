@@ -1,5 +1,7 @@
 // (c) 2026 Kazuki Kohzuki
 
+#pragma warning disable CA1822
+
 namespace Dirge.Test.IntegrationTest;
 
 public sealed partial class AsyncDisposeTests
@@ -80,7 +82,7 @@ public sealed partial class AsyncDisposeTests
     {
         var calls = new List<string>();
         await using (var target = new ConditionalAsyncOwner(calls, leaveOpen)) { }
-        Assert.Equal(leaveOpen ? ["when-true"] : new[] { "when-false" }, calls);
+        Assert.Equal(leaveOpen ? ["when-true"] : ["when-false"], calls);
     }
 
     [Theory]

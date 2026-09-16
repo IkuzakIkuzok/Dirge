@@ -1,5 +1,7 @@
 // (c) 2026 Kazuki Kohzuki
 
+#pragma warning disable CA1816
+
 namespace Dirge.Test.IntegrationTest;
 
 public sealed partial class DisposeLifecycleTests

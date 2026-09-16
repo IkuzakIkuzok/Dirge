@@ -1,5 +1,7 @@
 // (c) 2026 Kazuki Kohzuki
 
+#pragma warning disable IDE1006, CA1822
+
 namespace Dirge.Test.IntegrationTest;
 
 public sealed partial class GeneratedFieldNameTests
