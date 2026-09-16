@@ -67,7 +67,7 @@ public sealed partial class GeneratedFieldNameTests
     private partial class AsyncParent<__generated_disposed>
     {
         public int ReleaseCalls { get; private set; }
-        private void Release() => ReleaseCalls++;
+        private void Release() => this.ReleaseCalls++;
         private void __generated_asyncDisposed() { }
     }
 
@@ -83,17 +83,17 @@ public sealed partial class GeneratedFieldNameTests
     private sealed partial class __generated_disposed
     {
         public int ReleaseCalls { get; private set; }
-        private void Release() => ReleaseCalls++;
+        private void Release() => this.ReleaseCalls++;
     }
 
     private sealed class Resource : IDisposable, IAsyncDisposable
     {
         public int SyncCalls { get; private set; }
         public int AsyncCalls { get; private set; }
-        public void Dispose() => SyncCalls++;
+        public void Dispose() => this.SyncCalls++;
         public ValueTask DisposeAsync()
         {
-            AsyncCalls++;
+            this.AsyncCalls++;
             return default;
         }
     }

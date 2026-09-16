@@ -386,11 +386,11 @@ public sealed partial class AsyncDisposeTests
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void Dispose(bool disposing) => SyncCoreCalls++;
+        protected virtual void Dispose(bool disposing) => this.SyncCoreCalls++;
 
         protected virtual ValueTask DisposeAsyncCore()
         {
-            AsyncCoreCalls++;
+            this.AsyncCoreCalls++;
             return default;
         }
     }
