@@ -16,6 +16,12 @@ You can install the EnumSerializer from [NuGet](https://www.nuget.org/packages/D
 Mark a class with the `[AutoDispose]` attribute and implement the `IDisposable` interface.
 The generator will automatically generate the implementation of the `Dispose` method for you.
 
+Generated disposal-state fields keep the names `__generated_disposed` and
+`__generated_asyncDisposed` when available. If a name conflicts with a member in
+any partial declaration, the type name, or a type parameter, the generator appends
+`_1`, `_2`, etc. until it finds an available name. Inherited members do not cause
+renaming, preserving the existing behavior of these private fields.
+
 ```C#
 using Dirge;
 

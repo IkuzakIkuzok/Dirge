@@ -7,12 +7,12 @@ internal static class AsyncDisposeGenerationCore
     internal static void Generate(CodeBuilder builder, DisposableTypeInfo source)
     {
         var generation = source.AsyncGenerationInfo!;
-        builder.AppendLine("""
+        builder.AppendLine($$"""
 
             [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
             [global::System.Diagnostics.DebuggerBrowsable(global::System.Diagnostics.DebuggerBrowsableState.Never)]
             [global::System.Runtime.CompilerServices.CompilerGenerated]
-            private bool __generated_asyncDisposed = false;
+            private bool {{source.AsyncDisposedFieldName}} = false;
             """);
 
         if (!generation.OverrideCore)
@@ -22,7 +22,7 @@ internal static class AsyncDisposeGenerationCore
 
                 public {{modifier}}async global::System.Threading.Tasks.ValueTask DisposeAsync()
                 {
-                    if (this.__generated_disposed) return;
+                    if (this.{{source.DisposedFieldName}}) return;
 
                     try
                     {
@@ -46,7 +46,7 @@ internal static class AsyncDisposeGenerationCore
 
             {{modifiers}} {{asyncModifier}}global::System.Threading.Tasks.ValueTask DisposeAsyncCore()
             {
-                if (this.__generated_disposed || this.__generated_asyncDisposed) {{earlyReturn}}
+                if (this.{{source.DisposedFieldName}} || this.{{source.AsyncDisposedFieldName}}) {{earlyReturn}}
 
                 try
                 {
@@ -55,11 +55,11 @@ internal static class AsyncDisposeGenerationCore
         DisposeCallGenerator.Generate(builder, source.Fields, asynchronously: true);
         if (!isAsync) builder.AppendLine("return default;");
         builder.Unindent(2);
-        builder.AppendLine("""
+        builder.AppendLine($$"""
                 }
                 finally
                 {
-                    this.__generated_asyncDisposed = true;
+                    this.{{source.AsyncDisposedFieldName}} = true;
             """);
         if (generation.OverrideCore)
         {

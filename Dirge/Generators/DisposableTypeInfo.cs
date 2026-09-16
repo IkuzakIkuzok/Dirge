@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace Dirge.Generators;
 
-internal record DisposableTypeInfo(string Name, string? NamespaceName, EquatableArray<TypeWrapperInfo> DeclarationStack, bool IsSealed, bool IsRefLikeType, string? ReleaseUnmanagedResources, EquatableArray<DisposableFieldInfo> Fields, DisposeGenerationInfo GenerationInfo, AsyncDisposeGenerationInfo? AsyncGenerationInfo = null)
+internal record DisposableTypeInfo(string Name, string? NamespaceName, EquatableArray<TypeWrapperInfo> DeclarationStack, bool IsSealed, bool IsRefLikeType, string? ReleaseUnmanagedResources, EquatableArray<DisposableFieldInfo> Fields, DisposeGenerationInfo GenerationInfo, string DisposedFieldName, string AsyncDisposedFieldName, AsyncDisposeGenerationInfo? AsyncGenerationInfo = null)
 {
     internal static Result<DisposableTypeInfo>? Create(GeneratorAttributeSyntaxContext context)
     {
@@ -77,8 +77,27 @@ internal record DisposableTypeInfo(string Name, string? NamespaceName, Equatable
         if (!generationInfoResult.IsSuccess)
             return generationInfoResult.Diagnostic!;
         
-        return new DisposableTypeInfo(name, namespaceName, declarationStack, isSealed, isRefLikeType, releaseUnmanagedResources, fields, generationInfoResult.Value!, asyncGeneration);
+        var reservedNames = new HashSet<string>(targetSymbol.GetMembers().Select(member => member.Name), StringComparer.Ordinal)
+        {
+            name
+        };
+        foreach (var parameter in targetSymbol.TypeParameters)
+            reservedNames.Add(parameter.Name);
+        var disposedFieldName = GetUniqueFieldName("__generated_disposed", reservedNames);
+        var asyncDisposedFieldName = GetUniqueFieldName("__generated_asyncDisposed", reservedNames);
+
+        return new DisposableTypeInfo(name, namespaceName, declarationStack, isSealed, isRefLikeType, releaseUnmanagedResources, fields, generationInfoResult.Value!, disposedFieldName, asyncDisposedFieldName, asyncGeneration);
     } // internal static DisposableTypeInfo? Create (GeneratorAttributeSyntaxContext)
+
+    private static string GetUniqueFieldName(string preferredName, HashSet<string> reservedNames)
+    {
+        // GetMembers includes all partial declarations. Inherited members may be
+        // hidden by these private fields, as they were before collision avoidance.
+        var candidate = preferredName;
+        for (var suffix = 1; !reservedNames.Add(candidate); suffix++)
+            candidate = preferredName + "_" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return candidate;
+    } // private static string GetUniqueFieldName (string, HashSet<string>)
 
     private static DiagnosticInfo? EnsureAllAncestorsArePartial(TypeDeclarationSyntax typeDecl)
     {

@@ -249,6 +249,25 @@ public sealed partial class DisposeGenerationTest
         partial class Child : Parent { }
         """;
 
+    // lang=C#
+    [TestSource]
+    private static readonly string _disposedFieldNameCollision = """
+        using Dirge;
+
+        [AutoDispose]
+        sealed partial class Owner
+        {
+            private System.IDisposable __generated_disposed;
+        }
+
+        partial class Owner
+        {
+            private bool __generated_disposed_1 { get; set; }
+            private void __generated_disposed_2() { }
+            private class __generated_disposed_3 { }
+        }
+        """;
+
     private static readonly string[] _ignoreFiles = [
         "ExtensionMethods.g.cs",
         "Microsoft.CodeAnalysis.EmbeddedAttribute.cs",

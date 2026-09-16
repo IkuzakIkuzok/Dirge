@@ -10,16 +10,16 @@ internal static class DisposeGenerationCore
         switch (generation.Strategy)
         {
             case DisposeGenerationStrategy.GenerateSimple:
-                GenerateSimpleDispose(builder, source.Fields);
+                GenerateSimpleDispose(builder, source.Fields, source.DisposedFieldName);
                 break;
             case DisposeGenerationStrategy.GenerateRoot:
             case DisposeGenerationStrategy.OverrideDispose:
                 GenerateRoot(builder, generation.Strategy == DisposeGenerationStrategy.OverrideDispose,
-                    source.IsSealed, source.Fields, source.ReleaseUnmanagedResources);
+                    source.IsSealed, source.Fields, source.ReleaseUnmanagedResources, source.DisposedFieldName);
                 break;
             case DisposeGenerationStrategy.OverrideDisposeBool:
                 GenerateDisposeBool(builder, $"override {generation.AccessModifier}", source.Fields,
-                    source.ReleaseUnmanagedResources, callBase: true);
+                    source.ReleaseUnmanagedResources, source.DisposedFieldName, callBase: true);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(generation.Strategy));
@@ -28,12 +28,12 @@ internal static class DisposeGenerationCore
         GenerateFinalizer(builder, source.Name, source.ReleaseUnmanagedResources);
     } // internal static void Generate (CodeBuilder, DisposableTypeInfo)
 
-    private static void GenerateSimpleDispose(CodeBuilder builder, DisposableFieldInfo[] fields)
+    private static void GenerateSimpleDispose(CodeBuilder builder, DisposableFieldInfo[] fields, string disposedFieldName)
     {
-        builder.AppendLine("""
+        builder.AppendLine($$"""
             public void Dispose()
             {
-                if (this.__generated_disposed) return;
+                if (this.{{disposedFieldName}}) return;
 
                 try
                 {
@@ -43,17 +43,17 @@ internal static class DisposeGenerationCore
         DisposeCallGenerator.Generate(builder, fields);
         builder.Unindent(2);
 
-        builder.AppendLine("""
+        builder.AppendLine($$"""
                 }
                 finally
                 {
-                    this.__generated_disposed = true;
+                    this.{{disposedFieldName}} = true;
                 }
             }
             """);
     } // private static void GenerateSimpleDispose (CodeBuilder builder, DisposableFieldInfo[] fields)
 
-    private static void GenerateRoot(CodeBuilder builder, bool overrideDispose, bool isSealed, DisposableFieldInfo[] fields, string? releaseUnmanagedResources)
+    private static void GenerateRoot(CodeBuilder builder, bool overrideDispose, bool isSealed, DisposableFieldInfo[] fields, string? releaseUnmanagedResources, string disposedFieldName)
     {
         if (overrideDispose)
             builder.Append("override ");
@@ -78,15 +78,15 @@ internal static class DisposeGenerationCore
 
         var mod = isSealed ? "private" : "protected virtual";
         builder.AppendLine();
-        GenerateDisposeBool(builder, mod, fields, releaseUnmanagedResources, callBase: false);
+        GenerateDisposeBool(builder, mod, fields, releaseUnmanagedResources, disposedFieldName, callBase: false);
     } // private static void GenerateRoot (CodeBuilder, bool, bool, DisposableFieldInfo[], string?)
 
-    private static void GenerateDisposeBool(CodeBuilder builder, string modifiers, DisposableFieldInfo[] fields, string? releaseUnmanagedResources, bool callBase)
+    private static void GenerateDisposeBool(CodeBuilder builder, string modifiers, DisposableFieldInfo[] fields, string? releaseUnmanagedResources, string disposedFieldName, bool callBase)
     {
         builder.AppendLine($$"""
             {{modifiers}} void Dispose(bool disposing)
             {
-                if (this.__generated_disposed) return;
+                if (this.{{disposedFieldName}}) return;
 
                 try
                 {
@@ -112,11 +112,11 @@ internal static class DisposeGenerationCore
         }
 
         builder.Unindent();
-        builder.AppendLine("""
+        builder.AppendLine($$"""
                 }
                 finally
                 {
-                    this.__generated_disposed = true;
+                    this.{{disposedFieldName}} = true;
             """);
         if (callBase)
         {

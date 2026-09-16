@@ -74,11 +74,11 @@ internal sealed class DisposeGenerator : IIncrementalGenerator
             builder.Indent();
         }
 
-        builder.AppendLine("""
+        builder.AppendLine($$"""
             [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
             [global::System.Diagnostics.DebuggerBrowsable(global::System.Diagnostics.DebuggerBrowsableState.Never)]
             [global::System.Runtime.CompilerServices.CompilerGenerated]
-            private bool __generated_disposed = false;
+            private bool {{source.DisposedFieldName}} = false;
 
             """);
 

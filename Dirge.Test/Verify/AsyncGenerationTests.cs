@@ -285,6 +285,25 @@ public sealed partial class AsyncGenerationTests
         }
         """;
 
+    // lang=C#
+    [TestSource]
+    private static readonly string _disposedFieldNameCollisions = """
+        using Dirge;
+
+        [AutoDispose(IncludeAsync = true)]
+        partial class Owner<__generated_disposed>
+        {
+            private System.IAsyncDisposable __generated_asyncDisposed;
+        }
+
+        partial class Owner<__generated_disposed>
+        {
+            private bool __generated_disposed_1 { get; set; }
+            private void __generated_asyncDisposed_1() { }
+            private class __generated_asyncDisposed_2 { }
+        }
+        """;
+
     private static readonly string[] _ignoreFiles = [
         "ExtensionMethods.g.cs",
         "Microsoft.CodeAnalysis.EmbeddedAttribute.cs",
